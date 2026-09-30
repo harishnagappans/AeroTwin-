@@ -92,6 +92,10 @@ class CANDecoder:
             "battery_v": 14.1,
             "inj_timing": 15.0,
             "vib": 0.6,
+            "iat": 20.0,
+            "fuel_p": 3.2,
+            "alt_i": 12.0,
+            "wastegate": 50.0,
             "engine_status": 0,
             "fault_flags": 0,
             "frame_counter": 0,
@@ -201,9 +205,10 @@ class CANDecoder:
             }
 
         elif can_id == CAN_ID_ENGINE_FUEL:
-            fuel_raw, _, _ = struct.unpack(">HHI", data)
+            fuel_raw, fuel_p_raw, _ = struct.unpack(">HHI", data)
             return {
                 "fuel": float(fuel_raw) / 100.0,
+                "fuel_p": float(fuel_p_raw) / 1000.0 if fuel_p_raw > 0 else 3.2,
             }
 
         elif can_id == CAN_ID_ENGINE_VIBRATION:
@@ -213,22 +218,25 @@ class CANDecoder:
             }
 
         elif can_id == CAN_ID_ENGINE_ELECTRICAL:
-            bat_raw, _, _ = struct.unpack(">HHI", data)
+            bat_raw, alt_i_raw, _ = struct.unpack(">HHI", data)
             return {
                 "battery_v": float(bat_raw) / 1000.0,
+                "alt_i": float(alt_i_raw) / 100.0 if alt_i_raw > 0 else 12.0,
             }
 
         elif can_id == CAN_ID_ENGINE_INJECTION:
-            inj_raw, _, _ = struct.unpack(">HHI", data)
+            inj_raw, wg_raw, _ = struct.unpack(">HHI", data)
             return {
                 "inj_timing": (float(inj_raw) / 10.0) - 50.0,
+                "wastegate": float(wg_raw) / 10.0 if wg_raw > 0 else 50.0,
             }
 
         elif can_id == CAN_ID_ENVIRONMENT:
-            alt_raw, t_amb_raw, _ = struct.unpack(">hhI", data)
+            alt_raw, t_amb_raw, iat_raw, _ = struct.unpack(">hhhH", data)
             return {
                 "alt": float(alt_raw) - 500.0,
                 "t_amb": float(t_amb_raw) / 10.0,
+                "iat": (float(iat_raw) / 10.0) - 40.0 if iat_raw > 0 else 20.0,
             }
 
         elif can_id == CAN_ID_ENGINE_CONTROL:

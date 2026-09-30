@@ -47,19 +47,18 @@ def first_alarm(flag, t):
 
 def train():
     rng = np.random.default_rng(0)
-    H = [features(residuals(make_run(seed=300 + i, dT_isa=float(rng.uniform(-10, 35)))[0])) for i in range(20)]
+    H = [features(residuals(make_run(seed=300 + i, dT_isa=float(rng.uniform(-10, 35)))[0])) for i in range(5)]
     Hc = pd.concat(H)
-    iso = {c: IsolationForest(n_estimators=200, contamination=1e-3, random_state=0).fit(Hc[[f"m_z_{c}", f"s_z_{c}"]]) for c in CH}
+    iso = {c: IsolationForest(n_estimators=100, contamination=1e-3, random_state=0).fit(Hc[[f"m_z_{c}", f"s_z_{c}"]]) for c in CH}
     X, y = [Hc.drop(columns="t").iloc[::4]], ["healthy"] * len(Hc.iloc[::4])
     for f in FAULTS:
-        for sev in (0.4, 0.7, 1.0):
-            for k in range(2):
-                m, lab = make_run(f, sev, seed=400 + k + int(sev * 10), dT_isa=float(rng.uniform(-10, 35)))
-                ft = features(residuals(m)); l = lab.set_index("t").loc[ft.t]
-                frac = (l.severity / sev).values
-                keep = frac >= 0.3
-                X.append(ft.drop(columns="t")[keep]); y += [f] * int(keep.sum())
-    rf = RandomForestClassifier(300, class_weight="balanced", random_state=0).fit(pd.concat(X), y)
+        for sev in (0.5, 1.0):
+            m, lab = make_run(f, sev, seed=400 + int(sev * 10), dT_isa=float(rng.uniform(-10, 35)))
+            ft = features(residuals(m)); l = lab.set_index("t").loc[ft.t]
+            frac = (l.severity / sev).values
+            keep = frac >= 0.3
+            X.append(ft.drop(columns="t")[keep]); y += [f] * int(keep.sum())
+    rf = RandomForestClassifier(100, class_weight="balanced", random_state=0).fit(pd.concat(X), y)
     MD.mkdir(exist_ok=True); joblib.dump(iso, MD / "iso.joblib"); joblib.dump(rf, MD / "rf.joblib")
     return iso, rf
 

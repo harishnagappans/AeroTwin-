@@ -126,7 +126,11 @@ OPERATING_LIMITS = {
     "egt": {"max": 880.0, "unit": "°C", "label": "Max EGT Limit"},
     "oil_t": {"max": 110.0, "unit": "°C", "label": "Max Oil Temp"},
     "oil_p": {"min": 2.0, "max": 5.0, "unit": "bar", "label": "Oil Pressure Bounds"},
-    "battery_v": {"min": 12.0, "max": 14.5, "unit": "V", "label": "Voltage Bounds"}
+    "battery_v": {"min": 12.0, "max": 14.5, "unit": "V", "label": "Voltage Bounds"},
+    "iat": {"max": 65.0, "unit": "°C", "label": "Intake Temp Limit"},
+    "fuel_p": {"min": 2.2, "max": 4.5, "unit": "bar", "label": "Fuel Rail Pressure Bounds"},
+    "alt_i": {"min": 5.0, "max": 40.0, "unit": "A", "label": "Alternator Output Current"},
+    "wastegate": {"min": 0.0, "max": 100.0, "unit": "%", "label": "Wastegate Position"}
 }
 
 class DashboardState:
@@ -334,13 +338,17 @@ def build_telemetry_payload():
     history_z = {col: [round(float(v), 2) for v in sub_res[f"z_{col}"]] for col in CH if f"z_{col}" in sub_res.columns}
 
     sensor_health = [
-        {"sensor": "CHT Sensor", "state": "VALID" if abs(row['cht'] - prow['cht']) < 25 else "DEGRADED", "last_value": f"{row['cht']:.1f} °C"},
-        {"sensor": "EGT Sensor", "state": "VALID" if abs(row['egt'] - prow['egt']) < 20 else "DEGRADED", "last_value": f"{row['egt']:.1f} °C"},
-        {"sensor": "Oil Temp Sensor", "state": "VALID" if abs(row['oil_t'] - prow['oil_t']) < 15 else "DEGRADED", "last_value": f"{row['oil_t']:.1f} °C"},
-        {"sensor": "Oil Pressure Sensor", "state": "VALID" if row['oil_p'] > 1.2 else "FAILED", "last_value": f"{row['oil_p']:.2f} bar"},
-        {"sensor": "Fuel Flow Meter", "state": "VALID", "last_value": f"{row['fuel']:.1f} L/h"},
-        {"sensor": "Vibration Transducer", "state": "VALID" if row['vib'] < 2.5 else "DEGRADED", "last_value": f"{row['vib']:.2f} mm/s"},
-        {"sensor": "Battery Voltage Bus", "state": "VALID" if row['battery_v'] > 12.0 else "FAILED", "last_value": f"{row['battery_v']:.1f} V"},
+        {"sensor": "CHT Sensor", "state": "VALID" if abs(row.get('cht', 0) - prow.get('cht', 0)) < 25 else "DEGRADED", "last_value": f"{row.get('cht', 0):.1f} °C"},
+        {"sensor": "EGT Sensor", "state": "VALID" if abs(row.get('egt', 0) - prow.get('egt', 0)) < 20 else "DEGRADED", "last_value": f"{row.get('egt', 0):.1f} °C"},
+        {"sensor": "Oil Temp Sensor", "state": "VALID" if abs(row.get('oil_t', 0) - prow.get('oil_t', 0)) < 15 else "DEGRADED", "last_value": f"{row.get('oil_t', 0):.1f} °C"},
+        {"sensor": "Oil Pressure Sensor", "state": "VALID" if row.get('oil_p', 0) > 1.2 else "FAILED", "last_value": f"{row.get('oil_p', 0):.2f} bar"},
+        {"sensor": "Fuel Rail Press Sensor", "state": "VALID" if row.get('fuel_p', 3.2) > 1.8 else "DEGRADED", "last_value": f"{row.get('fuel_p', 3.2):.2f} bar"},
+        {"sensor": "Fuel Flow Meter", "state": "VALID", "last_value": f"{row.get('fuel', 0):.1f} L/h"},
+        {"sensor": "Intake Air Temp Sensor", "state": "VALID" if row.get('iat', 20.0) < 65.0 else "WARNING", "last_value": f"{row.get('iat', 20.0):.1f} °C"},
+        {"sensor": "Vibration Transducer", "state": "VALID" if row.get('vib', 0) < 2.5 else "DEGRADED", "last_value": f"{row.get('vib', 0):.2f} mm/s"},
+        {"sensor": "Battery Voltage Bus", "state": "VALID" if row.get('battery_v', 0) > 12.0 else "FAILED", "last_value": f"{row.get('battery_v', 0):.1f} V"},
+        {"sensor": "Alternator Current Sensor", "state": "VALID" if row.get('alt_i', 12.0) > 2.0 else "DEGRADED", "last_value": f"{row.get('alt_i', 12.0):.1f} A"},
+        {"sensor": "Wastegate Position Sensor", "state": "VALID", "last_value": f"{row.get('wastegate', 50.0):.1f} %"},
     ]
 
     # Dynamic CAN frame stream synchronized with active playback index i
@@ -353,7 +361,11 @@ def build_telemetry_payload():
         ("0x102", "ENGINE_TEMP", "EGT", lambda r: f"{r.get('egt', 0):.1f} °C"),
         ("0x103", "ENGINE_LUBRICATION", "OIL_P", lambda r: f"{r.get('oil_p', 0):.2f} bar"),
         ("0x104", "FUEL_SYSTEM", "FUEL_FLOW", lambda r: f"{r.get('fuel', 0):.1f} L/h"),
+        ("0x104", "FUEL_SYSTEM", "FUEL_RAIL_P", lambda r: f"{r.get('fuel_p', 3.2):.2f} bar"),
         ("0x105", "ELECTRICAL_BUS", "BATTERY_V", lambda r: f"{r.get('battery_v', 0):.1f} V"),
+        ("0x106", "ELECTRICAL_BUS", "ALT_CURRENT", lambda r: f"{r.get('alt_i', 12.0):.1f} A"),
+        ("0x107", "TURBO_INJECTION", "WASTEGATE_POS", lambda r: f"{r.get('wastegate', 50.0):.1f} %"),
+        ("0x108", "ENVIRONMENT_AIR", "INTAKE_AIR_TEMP", lambda r: f"{r.get('iat', 20.0):.1f} °C"),
     ]
 
     for idx, (sub_i, sub_row) in enumerate(sub_can_slice.iterrows()):
@@ -415,6 +427,10 @@ def build_telemetry_payload():
             "vib": round(float(row.get("vib", 0)), 2),
             "battery_v": round(float(row.get("battery_v", 0)), 1),
             "inj_timing": round(float(row.get("inj_timing", 0)), 1),
+            "iat": round(float(row.get("iat", 20.0)), 1),
+            "fuel_p": round(float(row.get("fuel_p", 3.2)), 2),
+            "alt_i": round(float(row.get("alt_i", 12.0)), 1),
+            "wastegate": round(float(row.get("wastegate", 50.0)), 1),
             "alt": round(float(row.get("alt", 0)), 1),
             "alt_ft": round(float(row.get("alt", 0) * 3.28084), 0),
             "thr": round(float(row.get("thr", 0)), 2),

@@ -38,6 +38,7 @@ VALID_CAN_IDS = {
 }
 
 # Signal physical range bounds
+# Signal physical range bounds
 SIGNAL_RANGES: Dict[str, Tuple[float, float]] = {
     "rpm": (0.0, 7000.0),            # RPM
     "thr": (0.0, 1.0),               # Throttle fraction (0.0 to 1.0)
@@ -50,6 +51,10 @@ SIGNAL_RANGES: Dict[str, Tuple[float, float]] = {
     "vib": (0.0, 30.0),              # mm/s
     "battery_v": (0.0, 25.0),        # V
     "inj_timing": (-50.0, 60.0),     # deg BTDC
+    "iat": (-40.0, 150.0),           # °C
+    "fuel_p": (0.0, 10.0),           # bar
+    "alt_i": (0.0, 60.0),            # Amps
+    "wastegate": (0.0, 100.0),       # %
     "alt": (-500.0, 15000.0),        # meters
     "t_amb": (-60.0, 70.0),          # °C
     "frame_counter": (0, 65535),
@@ -110,13 +115,15 @@ def encode_engine_oil(oil_t_c: float) -> bytes:
     return struct.pack(">HHI", oil_t_raw, 0, 0)
 
 
-def encode_engine_fuel(fuel_lh: float) -> bytes:
+def encode_engine_fuel(fuel_lh: float, fuel_p_bar: float = 3.2) -> bytes:
     """ID: 0x104 (8 Bytes)
     fuel: uint16 (scale 0.01, 0..60 L/h -> raw = fuel * 100)
-    reserved: 6 bytes
+    fuel_p: uint16 (scale 0.001, 0..10 bar -> raw = fuel_p * 1000)
+    reserved: uint32 (0)
     """
     fuel_raw = int(round(_clamp(fuel_lh, 0.0, 60.0) * 100.0))
-    return struct.pack(">HHI", fuel_raw, 0, 0)
+    fuel_p_raw = int(round(_clamp(fuel_p_bar, 0.0, 10.0) * 1000.0))
+    return struct.pack(">HHI", fuel_raw, fuel_p_raw, 0)
 
 
 def encode_engine_vibration(vib_mms: float) -> bytes:
@@ -128,33 +135,39 @@ def encode_engine_vibration(vib_mms: float) -> bytes:
     return struct.pack(">HHI", vib_raw, 0, 0)
 
 
-def encode_engine_electrical(battery_v: float) -> bytes:
+def encode_engine_electrical(battery_v: float, alt_i_amp: float = 12.0) -> bytes:
     """ID: 0x106 (8 Bytes)
     battery_v: uint16 (scale 0.001, 0..25 V -> raw = battery_v * 1000)
-    reserved: 6 bytes
+    alt_i: uint16 (scale 0.01, 0..60 A -> raw = alt_i * 100)
+    reserved: uint32 (0)
     """
     bat_raw = int(round(_clamp(battery_v, 0.0, 25.0) * 1000.0))
-    return struct.pack(">HHI", bat_raw, 0, 0)
+    alt_i_raw = int(round(_clamp(alt_i_amp, 0.0, 60.0) * 100.0))
+    return struct.pack(">HHI", bat_raw, alt_i_raw, 0)
 
 
-def encode_engine_injection(inj_timing_deg: float) -> bytes:
+def encode_engine_injection(inj_timing_deg: float, wastegate_pct: float = 50.0) -> bytes:
     """ID: 0x107 (8 Bytes)
     inj_timing: uint16 (scale 0.1, offset -50 deg -> raw = (inj_timing + 50) * 10)
-    reserved: 6 bytes
+    wastegate: uint16 (scale 0.1, 0..100% -> raw = wastegate * 10)
+    reserved: uint32 (0)
     """
     inj_raw = int(round((_clamp(inj_timing_deg, -50.0, 60.0) + 50.0) * 10.0))
-    return struct.pack(">HHI", inj_raw, 0, 0)
+    wg_raw = int(round(_clamp(wastegate_pct, 0.0, 100.0) * 10.0))
+    return struct.pack(">HHI", inj_raw, wg_raw, 0)
 
 
-def encode_environment(alt_m: float, t_amb_c: float) -> bytes:
+def encode_environment(alt_m: float, t_amb_c: float, iat_c: float = 20.0) -> bytes:
     """ID: 0x108 (8 Bytes)
-    alt: uint16 (scale 1.0, offset -500 m -> raw = alt + 500)
+    alt: int16 (scale 1.0, offset -500 m -> raw = alt + 500)
     t_amb: int16 (scale 0.1, -60..70°C -> raw = t_amb * 10)
-    reserved: uint32 (0)
+    iat: int16 (scale 0.1, offset -40°C -> raw = (iat + 40) * 10)
+    reserved: uint16 (0)
     """
     alt_raw = int(round(_clamp(alt_m, -500.0, 15000.0) + 500.0))
     t_amb_raw = int(round(_clamp(t_amb_c, -60.0, 70.0) * 10.0))
-    return struct.pack(">hhI", alt_raw, t_amb_raw, 0)
+    iat_raw = int(round((_clamp(iat_c, -40.0, 150.0) + 40.0) * 10.0))
+    return struct.pack(">hhhH", alt_raw, t_amb_raw, iat_raw, 0)
 
 
 def encode_engine_control(frame_cnt: int, status_flags: int = 0) -> bytes:

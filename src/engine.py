@@ -64,9 +64,13 @@ class HealthyEngine:
             setattr(self, k, getattr(self, k) + (1 - np.exp(-dt / self.TAU[k])) * (v - getattr(self, k)))
         battery_v = 12.2 if rpm < 1200 else 14.1 - 0.1 * pf
         inj_timing = 15.0 + 10.0 * (rpm / 5800)
+        iat = t_c + 5.0 + 8.0 * (map_in / 29.92)
+        fuel_p = 3.2 + 0.4 * pf
+        alt_i = 12.0 + 18.0 * pf if rpm >= 1200 else 2.0
+        wastegate = float(np.clip(100.0 * (1.0 - (map_in / 29.92) * 0.75), 5.0, 95.0))
         return dict(rpm=rpm, thr=thr, alt=alt_m, t_amb=t_c, map=map_in, torque=tq, power=pw,
                     cht=self.cht, egt=self.egt, oil_t=self.oil, oil_p=oil_pressure(rpm, self.oil), fuel=fuel,
-                    battery_v=battery_v, inj_timing=inj_timing)
+                    battery_v=battery_v, inj_timing=inj_timing, iat=iat, fuel_p=fuel_p, alt_i=alt_i, wastegate=wastegate)
 
 
 # (t_s, rpm, throttle, alt_m) breakpoints: takeoff, climb, cruise, loiter, descent

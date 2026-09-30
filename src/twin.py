@@ -7,7 +7,7 @@ from engine import HealthyEngine
 
 ROOT = Path(__file__).resolve().parent.parent
 CALIB = ROOT / "models" / "twin_calib.json"
-CH = ["map", "cht", "egt", "oil_t", "oil_p", "fuel", "vib", "battery_v", "inj_timing"]
+CH = ["map", "cht", "egt", "oil_t", "oil_p", "fuel", "vib", "battery_v", "inj_timing", "iat", "fuel_p", "alt_i", "wastegate"]
 
 
 def predict(m, mismatch=0.0):
@@ -15,7 +15,7 @@ def predict(m, mismatch=0.0):
     dT = m.t_amb.values - (15 - 0.0065 * m.alt.values)
     eng = HealthyEngine(m.t_amb.iloc[0], gain_mismatch=mismatch)
     rows = [eng.step(r, th, a, d) for r, th, a, d in zip(m.rpm, m.thr, m.alt, dT)]
-    p = pd.DataFrame(rows)[["map", "cht", "egt", "oil_t", "oil_p", "fuel", "battery_v", "inj_timing", "power"]]
+    p = pd.DataFrame(rows)[["map", "cht", "egt", "oil_t", "oil_p", "fuel", "battery_v", "inj_timing", "iat", "fuel_p", "alt_i", "wastegate", "power"]]
     p["vib"] = 0.6 + 0.9 * (m.rpm.values / 5800) ** 2
     return p
 

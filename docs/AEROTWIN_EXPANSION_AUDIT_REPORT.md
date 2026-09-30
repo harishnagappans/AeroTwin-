@@ -2,6 +2,10 @@
 **SIH Problem Statement SIH26054 — Team HYDROVEX**
 *AI-Enabled Real-Time Digital Twin System for Health Monitoring, Fault Prediction and Mission Reliability Enhancement of Aero Piston Engines used in MALE UAVs*
 
+> [!NOTE]
+> **Implementation Status: PHASE 1 PARAMETER EXPANSION COMPLETE & DEPLOYED**
+> Next-Gen 13-channel physical parameter suite (`iat`, `fuel_p`, `alt_i`, `wastegate`) is fully integrated into `src/engine.py`, `src/actual.py`, `src/twin.py`, `src/can_protocol.py`, `backend/server.py`, and `frontend/index.html`. Full specification available in [AEROTWIN_NEXTGEN_SUBSYSTEM_SPECIFICATION.md](file:///c:/Users/haris/Desktop/Aerotwin/docs/AEROTWIN_NEXTGEN_SUBSYSTEM_SPECIFICATION.md).
+
 ---
 
 ## 📑 EXECUTIVE SUMMARY & AUDIT FINDINGS

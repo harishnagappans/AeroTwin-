@@ -1011,7 +1011,7 @@
                       PROPULSION & POWER SUBSYSTEM TELEMETRY (COMPARED AGAINST PHYSICAL TWIN BASELINE)
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+                    <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
                       {[
                         { label: "RPM", val: telemetry.rpm, unit: "RPM", key: "rpm", base: telemetry.rpm, dec: 0 },
                         { label: "MAP", val: telemetry.map, unit: "inHg", key: "map", base: twin_predictions.map, dec: 2 },
@@ -1019,21 +1019,25 @@
                         { label: "EGT", val: telemetry.egt, unit: "°C", key: "egt", base: twin_predictions.egt, dec: 1 },
                         { label: "OIL TEMP", val: telemetry.oil_t, unit: "°C", key: "oil_t", base: twin_predictions.oil_t, dec: 1 },
                         { label: "OIL PRESS", val: telemetry.oil_p, unit: "bar", key: "oil_p", base: twin_predictions.oil_p, dec: 2 },
+                        { label: "INTAKE TEMP", val: telemetry.iat, unit: "°C", key: "iat", base: twin_predictions.iat, dec: 1 },
                         { label: "FUEL FLOW", val: telemetry.fuel, unit: "L/h", key: "fuel", base: twin_predictions.fuel, dec: 1 },
+                        { label: "FUEL RAIL P", val: telemetry.fuel_p, unit: "bar", key: "fuel_p", base: twin_predictions.fuel_p, dec: 2 },
                         { label: "VIBRATION", val: telemetry.vib, unit: "mm/s", key: "vib", base: twin_predictions.vib, dec: 2 },
                         { label: "BATTERY VOLT", val: telemetry.battery_v, unit: "V", key: "battery_v", base: twin_predictions.battery_v, dec: 1 },
-                        { label: "INJ TIMING", val: telemetry.inj_timing, unit: "deg", key: "inj_timing", base: twin_predictions.inj_timing, dec: 1 }
+                        { label: "ALT CURRENT", val: telemetry.alt_i, unit: "A", key: "alt_i", base: twin_predictions.alt_i, dec: 1 },
+                        { label: "INJ TIMING", val: telemetry.inj_timing, unit: "deg", key: "inj_timing", base: twin_predictions.inj_timing, dec: 1 },
+                        { label: "WASTEGATE", val: telemetry.wastegate, unit: "%", key: "wastegate", base: twin_predictions.wastegate, dec: 1 }
                       ].map((item, idx) => {
                         const z = z_scores[item.key] || 0.0;
                         const isAbnormal = Math.abs(z) > 3.0;
                         return (
-                          <div key={idx} className={`glass-card p-4 ${isAbnormal ? 'border-rose-400 bg-rose-50/70' : 'bg-white'}`}>
-                            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{item.label}</div>
-                            <div className={`text-2xl font-extrabold mt-1 font-mono ${isAbnormal ? 'text-rose-600' : 'text-emerald-600'}`}>
-                              {item.val !== undefined ? item.val.toFixed(item.dec) : '-'} <span className="text-xs font-normal text-slate-500">{item.unit}</span>
+                          <div key={idx} className={`glass-card p-3 ${isAbnormal ? 'border-rose-400 bg-rose-50/70' : 'bg-white'}`}>
+                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{item.label}</div>
+                            <div className={`text-xl font-extrabold mt-1 font-mono ${isAbnormal ? 'text-rose-600' : 'text-emerald-600'}`}>
+                              {item.val !== undefined ? item.val.toFixed(item.dec) : '-'} <span className="text-[10px] font-normal text-slate-500">{item.unit}</span>
                             </div>
-                            <div className="text-xs mt-1.5 font-medium text-sky-700">Twin: {item.base !== undefined ? item.base.toFixed(item.dec) : '-'} {item.unit}</div>
-                            <div className="text-[11px] text-slate-500 mt-0.5">
+                            <div className="text-[11px] mt-1 font-medium text-sky-700">Twin: {item.base !== undefined ? item.base.toFixed(item.dec) : '-'} {item.unit}</div>
+                            <div className="text-[10px] text-slate-500 mt-0.5">
                               Residual: <span className={isAbnormal ? "text-rose-600 font-bold" : "text-emerald-600 font-semibold"}>
                                 {z > 0 ? `+${z}` : z}σ
                               </span>
@@ -1077,7 +1081,7 @@
                     <div className="glass-card p-3.5 flex flex-wrap items-center justify-between gap-2">
                       <div className="text-xs font-bold text-sky-700 uppercase tracking-wider">SELECT SIGNALS FOR CHART PLOTTING</div>
                       <div className="flex flex-wrap gap-2 text-xs">
-                        {["cht", "egt", "oil_p", "oil_t", "map", "fuel", "vib", "battery_v", "inj_timing"].map(sig => (
+                        {["cht", "egt", "oil_p", "oil_t", "map", "fuel", "vib", "battery_v", "inj_timing", "iat", "fuel_p", "alt_i", "wastegate"].map(sig => (
                           <label key={sig} className="flex items-center space-x-1.5 cursor-pointer px-3 py-1 rounded-lg bg-slate-50 border border-slate-300 text-slate-800 font-semibold text-[11px]">
                             <input
                               type="checkbox"

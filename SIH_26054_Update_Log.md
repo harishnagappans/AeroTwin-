@@ -43,10 +43,20 @@ To comply with the PS, the following engine layers were modified:
   - `combustion_instability` uses `vib` drift threshold (3.0 $\sigma$).
   - `alternator_failure` uses `battery_v` drop threshold (-2.5 $\sigma$).
 
----
+## 2. Next-Gen 13-Channel Subsystem Parameter Suite & CAN Expansion
+To provide comprehensive UAV propulsion and auxiliary power health monitoring, the telemetry vector was expanded from 9 to 13 physical parameters:
 
-## Next Immediate Steps
-1. **Dashboard Overhaul (`dashboard/app.py`):** 
-   - Integrate the new channels into the live telemetry view.
-   - Implement an explicit **Explainable AI (XAI)** module that parses the `detect.py` reasoning into an autonomous maintenance advisory.
-   - Add explicit SIH-mandated simulation buttons (e.g., "Simulate Hot-Weather Takeoff", "Simulate High-Altitude Loiter").
+### Expanded Physics Telemetry Parameters:
+1. **Intake Air Temperature (`iat`)**: Real-time intake temperature (°C) modeling ambient temperature, ram air compression, and manifold heat.
+2. **Fuel Rail Pressure (`fuel_p`)**: High-pressure fuel rail supply (bar) for vapor lock and injector clog monitoring.
+3. **Alternator Charging Current (`alt_i`)**: Auxiliary generator output current (Amps) to monitor power draw and alternator health.
+4. **Turbo Wastegate Position (`wastegate`)**: Servo actuator position (%) tracking boost pressure regulation at high altitudes.
+
+### System Updates Across Layers:
+- **`src/engine.py`**: Added thermodynamic formulas for `iat`, `fuel_p`, `alt_i`, and `wastegate`.
+- **`src/actual.py`**: Added noise profile standard deviations (`SIGMA`) and updated fault injection behaviors (e.g. `fuel_system` drops rail pressure; `alternator_failure` drops output current).
+- **`src/twin.py` & `models/twin_calib.json`**: Expanded channel list `CH` to 13 parameters and re-calibrated nominal residual means ($\mu$) and standard deviations ($\sigma$).
+- **`src/can_protocol.py` & `src/can_decoder.py`**: Packed new signals into reserved CAN frame payloads (`0x104` Fuel Rail P, `0x106` Alternator Current, `0x107` Wastegate Pos, `0x108` Intake Temp).
+- **`src/detect.py`**: Retrained Isolation Forest and Random Forest classifiers across all 13 residual channels.
+- **`backend/server.py`**: Updated REST API telemetry payload structure, operating limits, sensor health diagnostics, and CAN message schema.
+- **`frontend/index.html`**: Expanded Ground Control Station UI with a 14-card Subsystem Telemetry Grid and interactive 13-channel chart plotting selectors.
