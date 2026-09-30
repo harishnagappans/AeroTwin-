@@ -1,0 +1,100 @@
+{
+  "disclaimer": "SYNTHETIC SIMULATION-BASED VALIDATION ONLY. NOT VALIDATED ON REAL AIRCRAFT TELEMETRY.",
+  "critical_metrics": {
+    "model_mismatch_tolerance_pct": "\u00b115% (0 false alarms/hr; >20% mismatch increases false alarms)",
+    "baseline_healthy_false_alarm_rate_per_hr": 0.0,
+    "fault_detection_rate_pct": 100.0,
+    "baseline_macro_f1": 1.0,
+    "overall_accuracy": 1.0,
+    "mean_ai_detection_latency_s": 193.44444444444446,
+    "mean_rul_simulation_absolute_error_min": 1.5878228354980943,
+    "can_transport_diagnostic_error": "0% classification discrepancy; residual MAE < 0.03 sigma",
+    "seed_to_seed_accuracy_std": 0.0,
+    "data_leakage_assessment": "Potential temporal leakage identified in sliding window subsampling; mission-level holdout validation recommended."
+  },
+  "confusion_matrix_summary": {
+    "overall_accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "weighted_precision": 1.0,
+    "weighted_recall": 1.0,
+    "weighted_f1": 1.0,
+    "per_class": {
+      "healthy": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 10
+      },
+      "cooling": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      },
+      "oil_pressure": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      },
+      "misfire": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      },
+      "fuel_system": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      },
+      "sensor_drift": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      },
+      "overheat": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      },
+      "injector_fault": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      },
+      "combustion_instability": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      },
+      "alternator_failure": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      }
+    }
+  },
+  "seed_robustness_summary": {
+    "accuracy_mean": 100.0,
+    "accuracy_std": 0.0,
+    "accuracy_min": 100.0,
+    "accuracy_max": 100.0,
+    "latency_mean": 185.33333333333331,
+    "latency_std": 39.66215349364034
+  },
+  "can_transport_summary": {
+    "total_faults_tested": 9,
+    "classification_matches": 9,
+    "mean_residual_mae": 0.02665007959001889,
+    "mean_rul_difference_min": 0.014278005642358002
+  }
+}

@@ -1,0 +1,5 @@
+experiment,evaluated_severity,test_window_count,classification_accuracy_pct,macro_f1
+Train LOW+MED -> Test LOW/MED/HIGH,LOW (0.4),5116,100.0,0.95
+Train LOW+MED -> Test LOW/MED/HIGH,MEDIUM (0.7),5116,100.0,0.95
+Train LOW+MED -> Test LOW/MED/HIGH,HIGH (1.0),4800,100.0,0.95
+Train LOW+HIGH -> Test MED,MEDIUM (0.7),5116,0.3127443315089914,0.002971071149335418

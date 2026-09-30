@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AEROTWIN COMMAND CENTER — Digital Twin & Telemetry Dashboard</title>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18, Babel, Chart.js, Leaflet.js -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --accent-color: #0284c7;
+      --panel-header: #f1f5f9;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-variant-numeric: tabular-nums;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sleek Light Theme (Default) */
+    body.theme-light {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --accent-color: #0284c7;
+      --panel-header: #f1f5f9;
+    }
+
+    /* Modern Dark Theme */
+    body.theme-dark {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-color: #38bdf8;
+      --panel-header: #0f172a;
+    }
+
+    /* High Contrast OLED Black */
+    body.theme-oled {
+      --bg-color: #000000;
+      --card-bg: #121212;
+      --card-border: #262626;
+      --text-main: #ffffff;
+      --text-muted: #a3a3a3;
+      --accent-color: #38bdf8;
+      --panel-header: #0a0a0a;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    body.theme-dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+    .glass-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+      border-radius: 12px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .glass-card:hover {
+      box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.06);
+    }
+
+    .theme-light select, .theme-light input[type="text"], .theme-light input[type="number"] {
+      background-color: #ffffff;
+      color: #0f172a;
+      border-color: #cbd5e1;
+    }
+
+    .theme-dark select, .theme-dark input[type="text"], .theme-dark input[type="number"] {
+      background-color: #0f172a;
+      color: #f8fafc;
+      border-color: #334155;
+    }
+
+    .drawer-backdrop {
+      background-color: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(4px);
+    }
+  </style>
+</head>
+<body class="theme-light">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const API_BASE = "http://localhost:8000/api";
+
+    // Clean Icons
+    const Icons = {
+      Settings: ({ className }) => (
+        <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      ),
+      Play: ({ className }) => (
+        <svg className={className || "w-4 h-4"} fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      ),
+      Pause: ({ className }) => (
+        <svg className={className || "w-4 h-4"} fill="currentColor" viewBox="0 0 24 24">
+          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+        </svg>
+      ),
+      Reset: ({ className }) => (
+        <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      ),
+      Close: ({ className }) => (
+        <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      ),
+      Activity: ({ className }) => (
+        <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      ),
+      ShieldAlert: ({ className }) => (
+        <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      ),
+      Check: ({ className }) => (
+        <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+        </svg>
+      ),
+      Sliders: ({ className }) => (
+        <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+        </svg>
+      ),
+      Dice: ({ className }) => (
+        <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+      )
+    };
+
+    // Format Mission Elapsed Time e.g. T+00:02:00
+    function formatMET(seconds) {
+      if (seconds === undefined || seconds === null) return "T+00:00:00";
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = Math.floor(seconds % 60);
+      return `T+${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    // Leaflet Flight Trajectory Map Component
+    function MissionMap({ trajectory, currentLat, currentLon, currentAlt, currentSpeed, currentPhase, currentT, theme }) {
+      const mapContainerRef = useRef(null);
+      const mapRef = useRef(null);
+      const polylineRef = useRef(null);
+      const uavMarkerRef = useRef(null);
+
+      const isDark = theme === "dark" || theme === "oled";
+
+      useEffect(() => {
+        if (!mapContainerRef.current || typeof L === 'undefined') return;
+
+        const tileUrl = isDark
+          ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+          : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+        if (!mapRef.current) {
+          const map = L.map(mapContainerRef.current, { zoomControl: false }).setView([12.9079, 80.1228], 12);
+          L.control.zoom({ position: 'topright' }).addTo(map);
+
+          L.tileLayer(tileUrl, { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(map);
+
+          const airbaseIcon = L.divIcon({
+            className: 'custom-airbase-icon',
+            html: `<div style="background:#0284c7; border:2px solid #ffffff; width:12px; height:12px; border-radius:50%; box-shadow: 0 0 8px #0284c7;"></div>`,
+            iconSize: [12, 12]
+          });
+
+          L.marker([12.9079, 80.1228], { icon: airbaseIcon })
+            .addTo(map)
+            .bindPopup("<div style='font-family:Inter,sans-serif; font-size:11px;'><b>TAMBARAM AIR FORCE BASE (VOMT)</b><br>12.9079° N, 80.1228° E<br>Airfield Launch & Recovery Facility</div>");
+
+          mapRef.current = map;
+        } else {
+          mapRef.current.eachLayer((layer) => {
+            if (layer instanceof L.TileLayer) {
+              mapRef.current.removeLayer(layer);
+            }
+          });
+          L.tileLayer(tileUrl, { maxZoom: 18 }).addTo(mapRef.current);
+        }
+      }, [theme]);
+
+      useEffect(() => {
+        if (!mapRef.current || !trajectory || trajectory.length === 0) return;
+
+        const coords = trajectory.map(p => [p.lat, p.lon]);
+
+        if (polylineRef.current) {
+          polylineRef.current.setLatLngs(coords);
+        } else {
+          polylineRef.current = L.polyline(coords, {
+            color: '#0284c7',
+            weight: 3.5,
+            opacity: 0.85,
+            dashArray: '6, 6'
+          }).addTo(mapRef.current);
+        }
+
+        const latestLat = currentLat || (trajectory.length > 0 ? trajectory[trajectory.length - 1].lat : 12.9079);
+        const latestLon = currentLon || (trajectory.length > 0 ? trajectory[trajectory.length - 1].lon : 80.1228);
+
+        if (uavMarkerRef.current) {
+          uavMarkerRef.current.setLatLng([latestLat, latestLon]);
+        } else {
+          uavMarkerRef.current = L.circleMarker([latestLat, latestLon], {
+            radius: 7,
+            fillColor: '#10b981',
+            color: '#ffffff',
+            weight: 2,
+            fillOpacity: 1.0
+          }).addTo(mapRef.current);
+        }
+
+        uavMarkerRef.current.bindPopup(`
+          <div style="font-family: Inter, sans-serif; font-size: 11px; line-height: 1.4;">
+            <b style="color: #0284c7;">AEROTWIN UAV ASSET</b><br/>
+            <b>Base:</b> Tambaram AFS (VOMT)<br/>
+            <b>MET:</b> ${formatMET(currentT)}<br/>
+            <b>Phase:</b> ${currentPhase}<br/>
+            <b>Alt:</b> ${currentAlt} m | <b>Speed:</b> ${currentSpeed} kts<br/>
+            <b>Pos:</b> ${latestLat.toFixed(4)}°N, ${latestLon.toFixed(4)}°E
+          </div>
+        `);
+      }, [trajectory, currentLat, currentLon, currentAlt, currentSpeed, currentPhase, currentT, theme]);
+
+      return (
+        <div className="w-full relative rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+          <div ref={mapContainerRef} style={{ height: "380px", width: "100%", zIndex: 1 }} />
+        </div>
+      );
+    }
+
+    // Appearance & Settings Slide-Over Drawer
+    function AppearanceDrawer({ isOpen, onClose, theme, setTheme, seed, setSeed, updateControl, pktLoss, setPktLoss, severity, setSeverity }) {
+      if (!isOpen) return null;
+
+      const isDark = theme === "dark" || theme === "oled";
+
+      return (
+        <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
+          {/* Backdrop */}
+          <div className="fixed inset-0 drawer-backdrop" onClick={onClose}></div>
+
+          {/* Drawer Slide Panel */}
+          <div className={`relative w-full max-w-md shadow-2xl h-full flex flex-col z-10 p-6 overflow-y-auto ${
+            isDark ? 'bg-slate-900 text-white border-l border-slate-800' : 'bg-white text-slate-900 border-l border-slate-200'
+          }`}>
+            
+            {/* Header */}
+            <div className={`flex items-center justify-between pb-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+              <div className="flex items-center space-x-2">
+                <Icons.Settings className="w-5 h-5 text-sky-600" />
+                <h3 className="font-bold text-base tracking-wide">DASHBOARD SETTINGS</h3>
+              </div>
+              <button 
+                onClick={onClose}
+                className={`p-1.5 rounded-lg transition ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+              >
+                <Icons.Close className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-6 text-xs">
+              
+              {/* Theme / Appearance Selection */}
+              <div>
+                <label className={`block font-semibold uppercase tracking-wider mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  APPEARANCE & VISUAL THEME
+                </label>
+                <div className="grid grid-cols-1 gap-2.5">
+                  {[
+                    { id: "light", name: "Sleek Light Mode (Default)", desc: "Crisp white operational dashboard with vibrant clarity" },
+                    { id: "dark", name: "Modern Dark Slate Mode", desc: "Dark slate theme for low-light environments" },
+                    { id: "oled", name: "High Contrast OLED Mode", desc: "Pure black contrast interface" }
+                  ].map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => setTheme(t.id)}
+                      className={`text-left p-3.5 rounded-xl border transition ${
+                        theme === t.id 
+                          ? isDark ? 'border-sky-500 bg-sky-950/60 text-white font-semibold' : 'border-sky-500 bg-sky-50/80 text-sky-900 font-semibold shadow-sm'
+                          : isDark ? 'border-slate-800 bg-slate-950/40 text-slate-400 hover:bg-slate-800' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold">{t.name}</span>
+                        {theme === t.id && <Icons.Check className="w-4 h-4 text-sky-600" />}
+                      </div>
+                      <div className={`text-[11px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Simulation Parameters */}
+              <div className={`p-4 rounded-xl border space-y-3 ${
+                isDark ? 'border-slate-800 bg-slate-950/60' : 'border-slate-200 bg-slate-50'
+              }`}>
+                <label className={`font-semibold uppercase tracking-wider block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  SIMULATION PARAMETERS
+                </label>
+                
+                <div>
+                  <div className={`flex justify-between mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <span>CAN PACKET LOSS RATE</span>
+                    <span className="font-mono text-sky-600 font-bold">{(pktLoss * 100).toFixed(0)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="0.25"
+                    step="0.01"
+                    value={pktLoss}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      setPktLoss(v);
+                      updateControl({ pkt_loss: v });
+                    }}
+                    className="w-full accent-sky-600 cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <div className={`flex justify-between mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <span>SIMULATION FAULT SEVERITY</span>
+                    <span className="font-mono text-rose-600 font-bold">{severity.toFixed(1)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="2.0"
+                    step="0.1"
+                    value={severity}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      setSeverity(v);
+                      updateControl({ severity: v });
+                    }}
+                    className="w-full accent-rose-600 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div className={`mt-auto pt-4 border-t text-center text-[11px] ${isDark ? 'border-slate-800 text-slate-500' : 'border-slate-200 text-slate-400'}`}>
+              AEROTWIN GROUND CONTROL STATION
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Main React Application
+    function App() {
+      const [telemetryData, setTelemetryData] = useState(null);
+      const [config, setConfig] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [activeTab, setActiveTab] = useState("gcs");
+      const [showRawJSON, setShowRawJSON] = useState(false);
+      const [selectedSignals, setSelectedSignals] = useState(["cht", "egt", "oil_p", "oil_t", "map"]);
+      const [theme, setTheme] = useState("light"); // Default cleanly to LIGHT mode
+      const [drawerOpen, setDrawerOpen] = useState(false);
+
+      // Controls state
+      const [seed, setSeed] = useState(7);
+      const [pktLoss, setPktLoss] = useState(0.0);
+      const [severity, setSeverity] = useState(1.0);
+
+      const isDark = theme === "dark" || theme === "oled";
+
+      // Toggle Theme Body Class
+      useEffect(() => {
+        document.body.className = `theme-${theme}`;
+      }, [theme]);
+
+      // Chart.js Canvas Refs
+      const signalsChartRef = useRef(null);
+      const zChartRef = useRef(null);
+      const signalsChartInstance = useRef(null);
+      const zChartInstance = useRef(null);
+
+      // Fetch Configuration on load
+      useEffect(() => {
+        fetch(`${API_BASE}/config`)
+          .then(res => res.json())
+          .then(data => setConfig(data))
+          .catch(err => console.error("Config fetch error:", err));
+      }, []);
+
+      // Polling Telemetry Data Loop
+      useEffect(() => {
+        const fetchTelemetry = () => {
+          fetch(`${API_BASE}/telemetry`)
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            })
+            .then(data => {
+              setTelemetryData(data);
+              if (data.state) {
+                if (data.state.seed !== undefined) setSeed(data.state.seed);
+                if (data.state.pkt_loss !== undefined) setPktLoss(data.state.pkt_loss);
+                if (data.state.severity !== undefined) setSeverity(data.state.severity);
+              }
+              setLoading(false);
+              setError(null);
+            })
+            .catch(err => {
+              console.error("Telemetry fetch error:", err);
+              setError("REST API Backend Disconnected. Ensure Python server is running on http://localhost:8000.");
+              setLoading(false);
+            });
+        };
+
+        fetchTelemetry();
+        const interval = setInterval(fetchTelemetry, 1000);
+        return () => clearInterval(interval);
+      }, []);
+
+      // Update Chart.js instances when history or theme changes
+      useEffect(() => {
+        if (!telemetryData || !telemetryData.history) return;
+        const { t: historyT, signals, twin, z_scores } = telemetryData.history;
+        const labels = historyT.map(v => formatMET(v));
+
+        const gridColor = isDark ? '#334155' : '#e2e8f0';
+        const tickColor = isDark ? '#94a3b8' : '#475569';
+        const labelColor = isDark ? '#f8fafc' : '#0f172a';
+
+        // Signals Line Chart
+        if (signalsChartRef.current && activeTab === "twin") {
+          const datasets = [];
+          const palette = {
+            cht: "#ef4444", egt: "#d97706", oil_p: "#059669", oil_t: "#db2777",
+            map: "#0284c7", fuel: "#7c3aed", vib: "#0891b2", battery_v: "#ca8a04", inj_timing: "#9333ea"
+          };
+
+          selectedSignals.forEach(sig => {
+            if (signals[sig]) {
+              datasets.push({
+                label: `ACTUAL ${sig.toUpperCase()}`,
+                data: signals[sig],
+                borderColor: palette[sig] || "#059669",
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.15
+              });
+            }
+            if (twin[sig]) {
+              datasets.push({
+                label: `TWIN ${sig.toUpperCase()}`,
+                data: twin[sig],
+                borderColor: "#0284c7",
+                borderDash: [4, 4],
+                borderWidth: 1.5,
+                pointRadius: 0,
+                tension: 0.15
+              });
+            }
+          });
+
+          if (signalsChartInstance.current) {
+            signalsChartInstance.current.data.labels = labels;
+            signalsChartInstance.current.data.datasets = datasets;
+            signalsChartInstance.current.options.plugins.legend.labels.color = labelColor;
+            signalsChartInstance.current.options.scales.x.ticks.color = tickColor;
+            signalsChartInstance.current.options.scales.x.grid.color = gridColor;
+            signalsChartInstance.current.options.scales.y.ticks.color = tickColor;
+            signalsChartInstance.current.options.scales.y.grid.color = gridColor;
+            signalsChartInstance.current.update('none');
+          } else {
+            signalsChartInstance.current = new Chart(signalsChartRef.current.getContext('2d'), {
+              type: 'line',
+              data: { labels, datasets },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: {
+                  legend: { labels: { color: labelColor, font: { family: 'Inter', size: 11, weight: '600' } } },
+                  tooltip: { mode: 'index', intersect: false, backgroundColor: isDark ? '#1e293b' : '#ffffff', titleColor: '#0284c7', bodyColor: isDark ? '#f8fafc' : '#0f172a', borderColor: '#cbd5e1', borderWidth: 1 }
+                },
+                scales: {
+                  x: { ticks: { color: tickColor, maxTicksLimit: 10, font: { family: 'Inter', size: 10 } }, grid: { color: gridColor } },
+                  y: { ticks: { color: tickColor, font: { family: 'Inter', size: 10 } }, grid: { color: gridColor } }
+                }
+              }
+            });
+          }
+        }
+
+        // Z-Scores Chart
+        if (zChartRef.current && activeTab === "twin") {
+          const zDatasets = [];
+          const colors = ["#0284c7", "#059669", "#d97706", "#db2777", "#7c3aed", "#0891b2"];
+
+          selectedSignals.forEach((sig, idx) => {
+            if (z_scores[sig]) {
+              zDatasets.push({
+                label: `z_${sig.toUpperCase()}`,
+                data: z_scores[sig],
+                borderColor: colors[idx % colors.length],
+                borderWidth: 1.5,
+                pointRadius: 0,
+                tension: 0.15
+              });
+            }
+          });
+
+          zDatasets.push({
+            label: "+3.0σ Threshold",
+            data: Array(labels.length).fill(3.0),
+            borderColor: "#dc2626",
+            borderDash: [4, 4],
+            borderWidth: 1.2,
+            pointRadius: 0
+          });
+          zDatasets.push({
+            label: "-3.0σ Threshold",
+            data: Array(labels.length).fill(-3.0),
+            borderColor: "#dc2626",
+            borderDash: [4, 4],
+            borderWidth: 1.2,
+            pointRadius: 0
+          });
+
+          if (zChartInstance.current) {
+            zChartInstance.current.data.labels = labels;
+            zChartInstance.current.data.datasets = zDatasets;
+            zChartInstance.current.options.plugins.legend.labels.color = labelColor;
+            zChartInstance.current.options.scales.x.ticks.color = tickColor;
+            zChartInstance.current.options.scales.x.grid.color = gridColor;
+            zChartInstance.current.options.scales.y.ticks.color = tickColor;
+            zChartInstance.current.options.scales.y.grid.color = gridColor;
+            zChartInstance.current.update('none');
+          } else {
+            zChartInstance.current = new Chart(zChartRef.current.getContext('2d'), {
+              type: 'line',
+              data: { labels, datasets: zDatasets },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: {
+                  legend: { labels: { color: labelColor, font: { family: 'Inter', size: 11, weight: '600' } } }
+                },
+                scales: {
+                  x: { ticks: { color: tickColor, maxTicksLimit: 10, font: { family: 'Inter', size: 10 } }, grid: { color: gridColor } },
+                  y: { ticks: { color: tickColor, font: { family: 'Inter', size: 10 } }, grid: { color: gridColor } }
+                }
+              }
+            });
+          }
+        }
+      }, [telemetryData, selectedSignals, activeTab, theme]);
+
+      // Control actions helper
+      const updateControl = (updates) => {
+        fetch(`${API_BASE}/control`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.state && telemetryData) {
+            setTelemetryData(prev => ({
+              ...prev,
+              state: { ...prev.state, ...data.state }
+            }));
+          }
+        })
+        .catch(err => console.error("Control update error:", err));
+      };
+
+      if (loading) {
+        return (
+          <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-sky-700">
+            <div className="animate-spin mb-4">
+              <Icons.Activity className="w-10 h-10 text-sky-600" />
+            </div>
+            <div className="text-lg font-bold tracking-wider uppercase">CONNECTING TO AEROTWIN REST API BACKEND...</div>
+            <div className="text-xs text-slate-500 mt-2 font-mono">http://localhost:8000/api/telemetry</div>
+          </div>
+        );
+      }
+
+      if (error) {
+        return (
+          <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-slate-50">
+            <div className="bg-white border border-rose-200 text-rose-800 p-6 rounded-2xl max-w-lg shadow-xl">
+              <Icons.ShieldAlert className="w-10 h-10 text-rose-600 mx-auto mb-3" />
+              <h2 className="text-xl font-bold mb-2">TELEMETRY BACKEND DISCONNECTED</h2>
+              <p className="text-xs text-slate-600 mb-4">{error}</p>
+              <button 
+                onClick={() => window.location.reload()}
+                className="bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-md"
+              >
+                RETRY CONNECTION
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      const { state, telemetry, twin_predictions, z_scores, ai_diagnosis, rul, can_bus, virtual_ecu, performance_metrics, trajectory } = telemetryData;
+
+      const seedPresets = [
+        { label: "7: Baseline", val: 7 },
+        { label: "42: Validation", val: 42 },
+        { label: "100: Robustness", val: 100 },
+        { label: "555: Demo Fault", val: 555 }
+      ];
+
+      return (
+        <div className="min-h-screen p-4 md:p-6 transition-colors duration-200">
+          
+          {/* Main Top Header Bar - Clean White Operational Style */}
+          <header className="glass-card p-4 mb-5 flex flex-col lg:flex-row justify-between items-center gap-4">
+            
+            {/* Left: System Badge & Title */}
+            <div className="flex items-center space-x-3.5">
+              <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-sm animate-pulse"></div>
+              <div>
+                <div className="flex items-center space-x-2.5">
+                  <h1 className="font-extrabold tracking-tight text-lg text-slate-900">AEROTWIN COMMAND CENTER</h1>
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
+                    REST API ONLINE
+                  </span>
+                </div>
+                <div className="text-xs text-slate-500 font-medium mt-0.5">
+                  ASSET: <span className="text-slate-800 font-semibold">AEROTWIN MALE UAV</span> | AIRBASE: <span className="text-slate-800 font-semibold">TAMBARAM AFS (VOMT)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Center: Mission Clock & Seed Status */}
+            <div className="flex items-center space-6 text-xs bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl">
+              <div className="px-2">
+                <span className="text-slate-500 font-semibold uppercase text-[10px] block">MISSION ELAPSED TIME</span>
+                <span className="text-sky-700 font-bold text-sm font-mono">{formatMET(state.t)}</span>
+              </div>
+              <div className="h-7 w-px bg-slate-300"></div>
+              <div className="px-2">
+                <span className="text-slate-500 font-semibold uppercase text-[10px] block">TELEMETRY MODE</span>
+                <span className="text-slate-800 font-bold">{state.source_label}</span>
+              </div>
+              <div className="h-7 w-px bg-slate-300"></div>
+              <div className="px-2">
+                <span className="text-slate-500 font-semibold uppercase text-[10px] block">SIM SEED</span>
+                <span className="text-indigo-700 font-extrabold font-mono text-sm">{state.seed !== undefined ? state.seed : 7}</span>
+              </div>
+            </div>
+
+            {/* Right: Raw JSON & Corner Settings Button */}
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowRawJSON(!showRawJSON)}
+                className={`px-3.5 py-2 rounded-xl border text-xs font-semibold transition ${
+                  showRawJSON 
+                    ? 'bg-sky-600 text-white border-sky-600 shadow-sm' 
+                    : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                {showRawJSON ? "VISUAL DASHBOARD" : "RAW JSON"}
+              </button>
+
+              {/* CORNER DISPLAY BUTTON */}
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs shadow-sm flex items-center space-x-2 transition"
+              >
+                <Icons.Settings className="w-4 h-4 text-sky-600" />
+                <span>APPEARANCE & CONFIG</span>
+              </button>
+            </div>
+          </header>
+
+          {/* Architecture Pipeline Flow Banner */}
+          <div className="glass-card p-3.5 mb-5">
+            <div className="text-center text-[11px] font-bold tracking-wider text-slate-500 uppercase mb-2">
+              AEROTWIN SYSTEM INTEGRATION PIPELINE ARCHITECTURE
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs text-center">
+              {["1. MISSION PROFILE", "2. VIRTUAL ECU", "3. CAN 2.0B TELEMETRY", "4. DIGITAL TWIN", "5. z-RESIDUALS", "6. AI DIAGNOSIS", "7. RUL ESTIMATION", "8. ADVISORY ACTION"].map((step, idx) => (
+                <React.Fragment key={idx}>
+                  <div className={`px-3 py-1.5 rounded-lg border text-[11px] font-semibold transition ${
+                    idx === 7 
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-bold' 
+                      : 'bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    {step}
+                  </div>
+                  {idx < 7 && <span className="text-slate-400 font-bold text-xs">→</span>}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          {/* Top 5 Subsystem Status Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5 mb-5 text-xs">
+            <div className="glass-card p-4">
+              <div className="text-slate-500 font-semibold uppercase text-[11px]">FADEC / ENGINE</div>
+              <div className={`text-base font-extrabold mt-1 ${state.selected_fault !== "NONE" ? 'text-rose-600' : 'text-emerald-600'}`}>
+                {state.selected_fault !== "NONE" ? "FAULT ACTIVE" : (telemetry.rpm > 500 ? "RUNNING" : "STANDBY")}
+              </div>
+              <div className="text-slate-500 font-mono text-xs mt-0.5">{telemetry.rpm} RPM</div>
+            </div>
+
+            <div className="glass-card p-4">
+              <div className="text-slate-500 font-semibold uppercase text-[11px]">MISSION PROFILE</div>
+              <div className="text-base font-extrabold text-sky-700 mt-1">{state.mission_profile}</div>
+              <div className="text-slate-500 text-xs mt-0.5">{telemetry.mission_phase}</div>
+            </div>
+
+            <div className="glass-card p-4">
+              <div className="text-slate-500 font-semibold uppercase text-[11px]">TWIN ALIGNMENT</div>
+              <div className={`text-base font-extrabold mt-1 ${ai_diagnosis.alarmed ? 'text-amber-600' : 'text-emerald-600'}`}>
+                {ai_diagnosis.alarmed ? "DRIFT DETECTED" : "NOMINAL (z ≤ 1.2σ)"}
+              </div>
+              <div className="text-slate-500 text-xs mt-0.5">MET: {formatMET(state.t)}</div>
+            </div>
+
+            <div className="glass-card p-4">
+              <div className="text-slate-500 font-semibold uppercase text-[11px]">AI DIAGNOSTICS</div>
+              <div className={`text-base font-extrabold mt-1 ${ai_diagnosis.alarmed ? 'text-rose-600 animate-pulse' : 'text-emerald-600'}`}>
+                {ai_diagnosis.predicted_fault || (state.selected_fault !== "NONE" ? "SIMULATED" : "HEALTHY")}
+              </div>
+              <div className="text-slate-500 text-xs mt-0.5 font-medium">HEALTH: {rul.health_percent}%</div>
+            </div>
+
+            <div className="glass-card p-4">
+              <div className="text-slate-500 font-semibold uppercase text-[11px]">CAN BUS TELEMETRY</div>
+              <div className="text-base font-extrabold text-sky-700 mt-1">{can_bus.stats.connection}</div>
+              <div className="text-slate-500 text-xs font-mono mt-0.5">{can_bus.stats.bitrate}</div>
+            </div>
+          </div>
+
+          {/* Raw JSON View if toggled */}
+          {showRawJSON ? (
+            <div className="glass-card p-5 mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <div className="font-bold text-sm text-sky-700">
+                  RAW UNINTERPRETED JSON RESPONSE FROM REST API (`/api/telemetry`)
+                </div>
+                <div className="text-xs text-slate-500">Updated: {new Date().toLocaleTimeString()}</div>
+              </div>
+              <pre className="p-4 rounded-xl bg-slate-900 text-emerald-400 text-xs font-mono overflow-auto max-h-[600px]">
+                {JSON.stringify(telemetryData, null, 2)}
+              </pre>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 mb-6">
+              
+              {/* Mission Control Panel (Left Sidebar) */}
+              <div className="glass-card p-4 space-y-4">
+                <div className="text-xs font-bold border-b border-slate-200 pb-2 uppercase tracking-wider text-slate-800 flex items-center justify-between">
+                  <span>MISSION CONTROL PANEL</span>
+                  <span className="text-[10px] text-sky-700 font-mono font-semibold">REST API</span>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">TELEMETRY SOURCE</label>
+                  <select 
+                    value={state.source_mode}
+                    onChange={(e) => updateControl({ source_mode: e.target.value })}
+                    className="w-full bg-white border border-slate-300 text-slate-800 rounded-lg px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-sky-500 shadow-sm"
+                  >
+                    <option value="SYNTHETIC SIMULATION">SYNTHETIC SIMULATION</option>
+                    <option value="FDR REPLAY">FDR REPLAY</option>
+                    <option value="CAN BUS">CAN BUS</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">MISSION PROFILE</label>
+                  <select 
+                    value={state.mission_profile}
+                    onChange={(e) => updateControl({ mission_profile: e.target.value })}
+                    className="w-full bg-white border border-slate-300 text-slate-800 rounded-lg px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-sky-500 shadow-sm"
+                  >
+                    {config?.mission_profiles?.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">SIMULATION FAULT INJECTOR</label>
+                  <select 
+                    value={state.selected_fault}
+                    onChange={(e) => updateControl({ selected_fault: e.target.value })}
+                    className="w-full bg-white border border-slate-300 text-slate-800 rounded-lg px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-sky-500 shadow-sm"
+                  >
+                    {config?.fault_options?.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                </div>
+
+                {/* PROMINENT OUTSIDE SIMULATION NOISE SEED CONTROLLER (User Request!) */}
+                <div className="p-3.5 bg-indigo-50/60 border border-indigo-200 rounded-xl space-y-2.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center space-x-1.5">
+                      <Icons.Sliders className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>SIMULATION NOISE SEED</span>
+                    </label>
+                    <span className="text-[11px] font-mono font-bold text-indigo-700">SEED: {seed}</span>
+                  </div>
+
+                  <div className="flex space-x-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max="9999"
+                      value={seed}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0;
+                        setSeed(val);
+                        updateControl({ seed: val });
+                      }}
+                      className="w-full bg-white border border-indigo-300 rounded-lg px-3 py-1.5 text-xs font-mono font-bold text-indigo-800 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                    />
+                    <button
+                      onClick={() => {
+                        const rSeed = Math.floor(Math.random() * 1000);
+                        setSeed(rSeed);
+                        updateControl({ seed: rSeed });
+                      }}
+                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition flex items-center space-x-1 shrink-0 shadow-sm"
+                      title="Generate Random Noise Seed"
+                    >
+                      <Icons.Dice className="w-3.5 h-3.5" />
+                      <span>Random</span>
+                    </button>
+                  </div>
+
+                  {/* Seed Presets */}
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    {seedPresets.map(p => (
+                      <button
+                        key={p.val}
+                        onClick={() => {
+                          setSeed(p.val);
+                          updateControl({ seed: p.val });
+                        }}
+                        className={`py-1 px-2 rounded-lg border text-[11px] font-mono font-semibold transition ${
+                          seed === p.val 
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+                            : 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-100'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {state.selected_fault !== "NONE" && (
+                  <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl text-center text-xs text-rose-800 font-bold shadow-sm">
+                    ⚠️ SIMULATED FAULT ACTIVE: {state.selected_fault}
+                  </div>
+                )}
+
+                {/* Scrubber & Execution Controls */}
+                <div className="pt-3 border-t border-slate-200 space-y-3">
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => updateControl({ playing: !state.playing })}
+                      className={`flex-1 py-2.5 rounded-xl font-bold text-xs transition flex items-center justify-center space-x-1.5 shadow-sm ${
+                        state.playing 
+                          ? 'bg-rose-600 hover:bg-rose-700 text-white' 
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      }`}
+                    >
+                      {state.playing ? <Icons.Pause className="w-4 h-4" /> : <Icons.Play className="w-4 h-4" />}
+                      <span>{state.playing ? "PAUSE" : "PLAY"}</span>
+                    </button>
+
+                    <button
+                      onClick={() => updateControl({ t: 120, playing: false })}
+                      className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 transition flex items-center space-x-1 shadow-sm"
+                    >
+                      <Icons.Reset className="w-3.5 h-3.5" />
+                      <span>RESET</span>
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 block mb-1">PLAYBACK SPEED ({state.speed}x)</label>
+                    <select
+                      value={state.speed}
+                      onChange={(e) => updateControl({ speed: parseInt(e.target.value) })}
+                      className="w-full bg-white border border-slate-300 text-slate-800 rounded-lg px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-sky-500 shadow-sm"
+                    >
+                      <option value={1}>1x (Realtime)</option>
+                      <option value={2}>2x Speed</option>
+                      <option value={5}>5x Speed</option>
+                      <option value={10}>10x Speed</option>
+                      <option value={50}>50x Speed</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold text-slate-600 mb-1">
+                      <span>TIMELINE SCRUBBER</span>
+                      <span className="font-mono text-sky-700 font-bold">{formatMET(state.t)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={120}
+                      max={state.T_max || 1200}
+                      step={10}
+                      value={state.t}
+                      onChange={(e) => updateControl({ t: parseInt(e.target.value), playing: false })}
+                      className="w-full accent-sky-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Main Tab Views */}
+              <div className="lg:col-span-3 space-y-4">
+                
+                {/* Navigation Tabs Bar */}
+                <div className="flex border-b border-slate-200 space-x-1.5 text-xs font-semibold">
+                  {[
+                    { id: "gcs", label: "1. SUBSYSTEM TELEMETRY" },
+                    { id: "twin", label: "2. DIGITAL TWIN RESIDUALS" },
+                    { id: "ai", label: "3. DIAGNOSTICS & RUL" },
+                    { id: "can", label: "4. CAN BUS TRANSPORT" },
+                    { id: "replay", label: "5. FLIGHT TRAJECTORY" }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`px-4 py-2.5 rounded-t-xl transition ${
+                        activeTab === tab.id 
+                          ? 'bg-white border-x border-t border-slate-200 border-b-2 border-b-sky-600 text-sky-700 font-extrabold shadow-sm' 
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* TAB 1: SUBSYSTEM TELEMETRY GRID */}
+                {activeTab === "gcs" && (
+                  <div className="space-y-4">
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 pb-1.5">
+                      PROPULSION & POWER SUBSYSTEM TELEMETRY (COMPARED AGAINST PHYSICAL TWIN BASELINE)
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+                      {[
+                        { label: "RPM", val: telemetry.rpm, unit: "RPM", key: "rpm", base: telemetry.rpm, dec: 0 },
+                        { label: "MAP", val: telemetry.map, unit: "inHg", key: "map", base: twin_predictions.map, dec: 2 },
+                        { label: "CHT", val: telemetry.cht, unit: "°C", key: "cht", base: twin_predictions.cht, dec: 1 },
+                        { label: "EGT", val: telemetry.egt, unit: "°C", key: "egt", base: twin_predictions.egt, dec: 1 },
+                        { label: "OIL TEMP", val: telemetry.oil_t, unit: "°C", key: "oil_t", base: twin_predictions.oil_t, dec: 1 },
+                        { label: "OIL PRESS", val: telemetry.oil_p, unit: "bar", key: "oil_p", base: twin_predictions.oil_p, dec: 2 },
+                        { label: "FUEL FLOW", val: telemetry.fuel, unit: "L/h", key: "fuel", base: twin_predictions.fuel, dec: 1 },
+                        { label: "VIBRATION", val: telemetry.vib, unit: "mm/s", key: "vib", base: twin_predictions.vib, dec: 2 },
+                        { label: "BATTERY VOLT", val: telemetry.battery_v, unit: "V", key: "battery_v", base: twin_predictions.battery_v, dec: 1 },
+                        { label: "INJ TIMING", val: telemetry.inj_timing, unit: "deg", key: "inj_timing", base: twin_predictions.inj_timing, dec: 1 }
+                      ].map((item, idx) => {
+                        const z = z_scores[item.key] || 0.0;
+                        const isAbnormal = Math.abs(z) > 3.0;
+                        return (
+                          <div key={idx} className={`glass-card p-4 ${isAbnormal ? 'border-rose-400 bg-rose-50/70' : 'bg-white'}`}>
+                            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{item.label}</div>
+                            <div className={`text-2xl font-extrabold mt-1 font-mono ${isAbnormal ? 'text-rose-600' : 'text-emerald-600'}`}>
+                              {item.val !== undefined ? item.val.toFixed(item.dec) : '-'} <span className="text-xs font-normal text-slate-500">{item.unit}</span>
+                            </div>
+                            <div className="text-xs mt-1.5 font-medium text-sky-700">Twin: {item.base !== undefined ? item.base.toFixed(item.dec) : '-'} {item.unit}</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">
+                              Residual: <span className={isAbnormal ? "text-rose-600 font-bold" : "text-emerald-600 font-semibold"}>
+                                {z > 0 ? `+${z}` : z}σ
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="glass-card p-4 space-y-3">
+                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">FLIGHT DYNAMICS & FUEL LOGISTICS</div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                        <div>
+                          <div className="text-slate-500 font-semibold">ALTITUDE MSL</div>
+                          <div className="text-xl font-extrabold text-sky-700 font-mono mt-0.5">{telemetry.alt} m</div>
+                          <div className="text-slate-500 text-[11px] mt-0.5">{telemetry.alt_ft} ft</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-500 font-semibold">AIRSPEED</div>
+                          <div className="text-xl font-extrabold text-sky-700 font-mono mt-0.5">{telemetry.airspeed_kts} kts</div>
+                          <div className="text-slate-500 text-[11px] mt-0.5">THROTTLE {Math.round(telemetry.thr * 100)}%</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-500 font-semibold">FUEL CONSUMPTION</div>
+                          <div className="text-xl font-extrabold text-emerald-600 font-mono mt-0.5">{telemetry.fuel} L/h</div>
+                          <div className="text-slate-500 text-[11px] mt-0.5">TANK CAP: 200 L</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-500 font-semibold">MISSION PHASE</div>
+                          <div className="text-xl font-extrabold text-emerald-600 mt-0.5">{telemetry.mission_phase}</div>
+                          <div className="text-slate-500 text-[11px] font-mono mt-0.5">{formatMET(state.t)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: DIGITAL TWIN RESIDUALS */}
+                {activeTab === "twin" && (
+                  <div className="space-y-4">
+                    <div className="glass-card p-3.5 flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-xs font-bold text-sky-700 uppercase tracking-wider">SELECT SIGNALS FOR CHART PLOTTING</div>
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        {["cht", "egt", "oil_p", "oil_t", "map", "fuel", "vib", "battery_v", "inj_timing"].map(sig => (
+                          <label key={sig} className="flex items-center space-x-1.5 cursor-pointer px-3 py-1 rounded-lg bg-slate-50 border border-slate-300 text-slate-800 font-semibold text-[11px]">
+                            <input
+                              type="checkbox"
+                              checked={selectedSignals.includes(sig)}
+                              onChange={(e) => {
+                                if (e.target.checked) setSelectedSignals([...selectedSignals, sig]);
+                                else setSelectedSignals(selectedSignals.filter(s => s !== sig));
+                              }}
+                              className="accent-sky-600"
+                            />
+                            <span className="uppercase">{sig}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="glass-card p-4">
+                      <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                        ACTUAL TELEMETRY vs PHYSICAL TWIN BASELINE (CHART.JS CANVAS)
+                      </div>
+                      <div className="h-64 relative">
+                        <canvas ref={signalsChartRef}></canvas>
+                      </div>
+                    </div>
+
+                    <div className="glass-card p-4">
+                      <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                        STANDARDIZED RESIDUAL TRAJECTORY (z-SCORE IN σ)
+                      </div>
+                      <div className="h-64 relative">
+                        <canvas ref={zChartRef}></canvas>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: DIAGNOSTICS & RUL */}
+                {activeTab === "ai" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="glass-card p-4 space-y-3.5">
+                      <div className="text-xs font-bold border-b border-slate-200 pb-2 uppercase text-sky-700">
+                        AI ANOMALY DETECTION & DIAGNOSIS
+                      </div>
+
+                      <div className={`p-3.5 rounded-xl border text-sm font-bold flex items-center space-x-2.5 ${
+                        ai_diagnosis.alarmed 
+                          ? 'bg-rose-50 border-rose-300 text-rose-800' 
+                          : 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                      }`}>
+                        {ai_diagnosis.alarmed ? <Icons.ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" /> : <Icons.Check className="w-5 h-5 text-emerald-600 shrink-0" />}
+                        <span>
+                          {ai_diagnosis.alarmed 
+                            ? `ANOMALY ALARM DETECTED AT MET ${formatMET(ai_diagnosis.t_alarm)}` 
+                            : "SYSTEM NOMINAL — NO ANOMALY DETECTED"}
+                        </span>
+                      </div>
+
+                      {ai_diagnosis.predicted_fault && (
+                        <div className="text-xs text-slate-700">
+                          <span className="text-slate-500 font-semibold">PREDICTED FAULT CLASS:</span>{" "}
+                          <span className="text-rose-600 font-bold text-sm">{ai_diagnosis.predicted_fault}</span>
+                        </div>
+                      )}
+
+                      <div className="p-3.5 rounded-xl border border-sky-200 bg-sky-50/60 space-y-1">
+                        <div className="text-xs font-bold text-sky-800">EXPLAINABLE AI (XAI) ATTRIBUTION:</div>
+                        <p className="text-xs text-slate-700 leading-relaxed">
+                          {ai_diagnosis.why_xai || "All telemetry channels operate strictly within physical Digital Twin baseline bounds."}
+                        </p>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200">
+                        <div className="text-xs font-bold text-slate-500 uppercase mb-2">VERIFIED BENCHMARK PERFORMANCE METRICS</div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                            <div className="text-slate-500 font-semibold">ACCURACY</div>
+                            <div className="text-base font-extrabold text-emerald-600 mt-0.5">{performance_metrics.accuracy_pct}%</div>
+                          </div>
+                          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                            <div className="text-slate-500 font-semibold">MACRO F1 SCORE</div>
+                            <div className="text-base font-extrabold text-emerald-600 mt-0.5">{performance_metrics.macro_f1}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="glass-card p-4 space-y-3.5">
+                      <div className="text-xs font-bold border-b border-slate-200 pb-2 uppercase text-sky-700">
+                        REMAINING USEFUL LIFE (RUL) & ADVISORY ACTION
+                      </div>
+
+                      <div className="text-center py-2">
+                        <div className="text-xs text-slate-500 font-semibold">ESTIMATED REMAINING USEFUL LIFE (RUL)</div>
+                        <div className={`text-3xl font-extrabold mt-1.5 ${rul.health_percent < 50 ? 'text-rose-600 animate-pulse' : 'text-emerald-600'}`}>
+                          {rul.data?.rul_min !== undefined && rul.data?.rul_min !== null
+                            ? (rul.data.rul_min <= 0 ? "0.0 MIN (EXPIRED / CRITICAL)" : `${rul.data.rul_min} MIN`)
+                            : "NOMINAL / UNBOUNDED"}
+                        </div>
+                        <div className="text-xs mt-1 text-slate-600 font-mono">HEALTH SCORE: {rul.health_percent}% ({rul.health_status})</div>
+                      </div>
+
+                      <div className="w-full rounded-full h-3.5 border border-slate-300 bg-slate-100 overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 ${rul.health_percent < 40 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                          style={{ width: `${rul.health_percent}%` }}
+                        ></div>
+                      </div>
+
+                      {ai_diagnosis.predicted_fault && config?.advisories?.[ai_diagnosis.predicted_fault.toLowerCase()] && (
+                        <div className="bg-rose-50 border border-rose-300 p-4 rounded-xl space-y-1 shadow-sm">
+                          <div className="text-xs font-bold text-rose-800">
+                            ⚠️ {config.advisories[ai_diagnosis.predicted_fault.toLowerCase()].title}
+                          </div>
+                          <div className="text-xs text-slate-700 leading-relaxed">
+                            {config.advisories[ai_diagnosis.predicted_fault.toLowerCase()].action}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 4: CAN BUS TRANSPORT */}
+                {activeTab === "can" && (
+                  <div className="space-y-4">
+                    <div className="glass-card p-4">
+                      <div className="text-xs font-bold text-slate-500 uppercase mb-2">CAN BUS TRANSPORT STATS</div>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+                        <div>
+                          <div className="text-slate-500 font-semibold">INTERFACE</div>
+                          <div className="text-sm font-bold text-sky-700">{can_bus.stats.interface}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-500 font-semibold">BITRATE</div>
+                          <div className="text-sm font-bold text-sky-700">{can_bus.stats.bitrate}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-500 font-semibold">FRAME RATE</div>
+                          <div className="text-sm font-bold text-emerald-600">{can_bus.stats.fps} FPS</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-500 font-semibold">FRAMES RECEIVED</div>
+                          <div className="text-sm font-bold text-emerald-600">{can_bus.stats.received}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-500 font-semibold">DROPPED FRAMES</div>
+                          <div className="text-sm font-bold text-slate-700">{can_bus.stats.dropped}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="glass-card p-4">
+                      <div className="text-xs font-bold text-slate-500 uppercase mb-2">DECODED CAN 2.0B BROADCAST MESSAGES (LATEST 15)</div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs text-left border-collapse font-mono">
+                          <thead>
+                            <tr className="border-b border-slate-200 text-slate-500">
+                              <th className="py-2">TIME</th>
+                              <th className="py-2">CAN ID</th>
+                              <th className="py-2">MESSAGE</th>
+                              <th className="py-2">SIGNAL</th>
+                              <th className="py-2">VALUE</th>
+                              <th className="py-2">STATUS</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {can_bus.messages.map((msg, idx) => (
+                              <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
+                                <td className="py-1.5 text-slate-500">{msg.time}</td>
+                                <td className="py-1.5 font-bold text-sky-700">{msg.can_id}</td>
+                                <td className="py-1.5 text-slate-700">{msg.message}</td>
+                                <td className="py-1.5 text-slate-700">{msg.signal}</td>
+                                <td className="py-1.5 font-bold text-emerald-600">{msg.value}</td>
+                                <td className="py-1.5 text-emerald-600 font-semibold">{msg.status}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="glass-card p-4">
+                      <div className="text-xs font-bold text-slate-500 uppercase mb-2">VIRTUAL ECU SENSOR HARDWARE HEALTH</div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
+                        {virtual_ecu.sensor_health.map((sh, idx) => (
+                          <div key={idx} className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
+                            <div>
+                              <div className="font-bold text-slate-800">{sh.sensor}</div>
+                              <div className="text-slate-500 text-[11px] font-mono">{sh.last_value}</div>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              sh.state === 'VALID' 
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                                : 'bg-rose-100 text-rose-800 border border-rose-300'
+                            }`}>
+                              {sh.state}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 5: FLIGHT TRAJECTORY */}
+                {activeTab === "replay" && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      
+                      {/* Leaflet Trajectory Map */}
+                      <div className="lg:col-span-2 glass-card p-4 space-y-2">
+                        <div className="flex justify-between items-center mb-1">
+                          <div className="text-xs font-bold text-sky-700 uppercase">
+                            FLIGHT TRAJECTORY MAP — ORIGIN: TAMBARAM AIR FORCE BASE (12.9079° N, 80.1228° E)
+                          </div>
+                          <div className="text-[11px] font-semibold text-slate-500">
+                            TAMBARAM AFS, CHENNAI
+                          </div>
+                        </div>
+
+                        <MissionMap
+                          trajectory={trajectory}
+                          currentLat={trajectory.length > 0 ? trajectory[trajectory.length - 1].lat : 12.9079}
+                          currentLon={trajectory.length > 0 ? trajectory[trajectory.length - 1].lon : 80.1228}
+                          currentAlt={telemetry.alt}
+                          currentSpeed={telemetry.airspeed_kts}
+                          currentPhase={telemetry.mission_phase}
+                          currentT={state.t}
+                          theme={theme}
+                        />
+                      </div>
+
+                      {/* Flight Trajectory Metrics Summary */}
+                      <div className="glass-card p-4 space-y-3">
+                        <div className="text-xs font-bold text-sky-700 uppercase border-b border-slate-200 pb-1">
+                          FLIGHT STATUS SUMMARY
+                        </div>
+
+                        <div className="space-y-2.5 text-xs">
+                          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                            <div className="text-slate-500 font-semibold">LAUNCH FACILITY</div>
+                            <div className="text-sm font-bold text-sky-700">TAMBARAM AIR FORCE BASE</div>
+                            <div className="text-slate-500 text-[11px] font-mono">12.9079° N, 80.1228° E (VOMT)</div>
+                          </div>
+
+                          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                            <div className="text-slate-500 font-semibold">CURRENT UAV POSITION</div>
+                            <div className="text-sm font-bold text-emerald-600 font-mono">
+                              {trajectory.length > 0 ? `${trajectory[trajectory.length - 1].lat}° N, ${trajectory[trajectory.length - 1].lon}° E` : '12.9079° N, 80.1228° E'}
+                            </div>
+                            <div className="text-slate-500 text-[11px] font-mono">MET: {formatMET(state.t)}</div>
+                          </div>
+
+                          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                            <div className="text-slate-500 font-semibold">ALTITUDE & AIRSPEED</div>
+                            <div className="text-sm font-bold text-sky-700 font-mono">{telemetry.alt} m ({telemetry.alt_ft} ft)</div>
+                            <div className="text-slate-500 text-[11px] font-mono">AIRSPEED: {telemetry.airspeed_kts} kts</div>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Trajectory Waypoints Log */}
+                    <div className="glass-card p-4">
+                      <div className="text-xs font-bold text-slate-500 uppercase mb-2">GPS TRAJECTORY WAYPOINT LOG</div>
+                      <div className="border border-slate-200 p-3 rounded-xl text-xs max-h-40 overflow-y-auto bg-slate-50 font-mono">
+                        <div className="grid grid-cols-3 font-bold border-b border-slate-200 pb-1.5 mb-1 text-sky-700">
+                          <span>MET</span>
+                          <span>LATITUDE (°N)</span>
+                          <span>LONGITUDE (°E)</span>
+                        </div>
+                        {trajectory.slice(-15).map((point, idx) => (
+                          <div key={idx} className="grid grid-cols-3 border-b border-slate-100 py-1">
+                            <span className="text-slate-500">{formatMET(point.t)}</span>
+                            <span className="font-bold text-emerald-600">{point.lat}</span>
+                            <span className="font-bold text-emerald-600">{point.lon}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+
+              </div>
+            </div>
+          )}
+
+          {/* Settings & Appearance Slide-Over Drawer */}
+          <AppearanceDrawer
+            isOpen={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            theme={theme}
+            setTheme={setTheme}
+            seed={seed}
+            setSeed={setSeed}
+            updateControl={updateControl}
+            pktLoss={pktLoss}
+            setPktLoss={setPktLoss}
+            severity={severity}
+            setSeverity={setSeverity}
+          />
+
+          {/* Footer */}
+          <footer className="text-center text-xs mt-8 pt-4 border-t border-slate-200 text-slate-500 font-medium">
+            AEROTWIN GROUND CONTROL STATION | DIGITAL TWIN & TELEMETRY DASHBOARD
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

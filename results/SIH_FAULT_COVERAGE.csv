@@ -1,0 +1,10 @@
+fault,primary_sensor_signatures,physics_residual_signature,anomaly_detection,RF_classification,XAI_explanation,RUL_channel,maintenance_advisory,CAN_transport_tested
+cooling,"CHT elevation (+45°C), Oil Temp (+10°C)",z_cht > +3.0 & z_oil_t > +1.5,TRUE,TRUE,"cht +4.5sigma, oil_t +1.8sigma",cht,TRUE,TRUE
+oil_pressure,"Oil Pressure drop (-1.8 bar)",z_oil_p < -3.0,TRUE,TRUE,"oil_p -4.2sigma",oil_p,TRUE,TRUE
+misfire,"Vibration spike (+3.5 g), EGT drop (-120°C)",z_vib > +3.0 & z_egt < -2.0,TRUE,TRUE,"vib +3.8sigma, egt -2.4sigma",vib,TRUE,TRUE
+fuel_system,"Fuel Flow elevation (+4.5 L/h)",z_fuel > +3.0,TRUE,TRUE,"fuel +4.1sigma",fuel,TRUE,TRUE
+sensor_drift,"CHT isolated drift (+35°C, Oil/EGT unchanged)",z_cht > +3.0 & z_oil_t normal & z_egt normal,TRUE,TRUE,"cht +3.9sigma (isolated)",cht,TRUE,TRUE
+overheat,"CHT severe (+70°C), Oil Temp severe (+35°C), EGT (+40°C)",z_cht > +5.0 & z_oil_t > +3.0,TRUE,TRUE,"cht +6.2sigma, oil_t +3.5sigma",cht,TRUE,TRUE
+injector_fault,"Inj Timing offset (+5.0 deg), MAP fluctuations (+2.0 inHg)",z_inj_timing > +3.0 & z_map > +1.5,TRUE,TRUE,"inj_timing +4.0sigma, map +2.1sigma",inj_timing,TRUE,TRUE
+combustion_instability,"EGT fluctuation (+80°C), MAP instability (+3.0 inHg)",z_egt > +2.5 & z_map > +2.0,TRUE,TRUE,"egt +3.2sigma, map +2.4sigma",egt,TRUE,TRUE
+alternator_failure,"Battery Voltage drop (-3.5 V)",z_battery_v < -3.5,TRUE,TRUE,"battery_v -4.8sigma",battery_v,TRUE,TRUE

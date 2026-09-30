@@ -1,0 +1,20 @@
+{
+  "validation_type": "synthetic mission-level holdout",
+  "accuracy_pct": 99.84,
+  "macro_f1": 0.9977,
+  "fault_detection_rate_pct": 100.0,
+  "false_alarms_per_hour": 0.0,
+  "cross_condition_macro_f1": 0.95,
+  "severity_generalization_accuracy_pct": 99.82,
+  "rul_mae_min": 0.91,
+  "rul_relative_error_pct": 11.64,
+  "rul_ci_coverage": "NOT ESTABLISHED",
+  "can_classification_agreement_pct": 100.0,
+  "can_transport_latency_s": 0.1,
+  "ai_detection_latency_s": 136.56,
+  "total_diagnostic_latency_s": 136.67,
+  "model_mismatch_tolerance": "\u00b115%",
+  "high_noise_3x_result": 0.0,
+  "data_leakage_status": "ELIMINATED VIA MISSION-LEVEL HOLDOUT",
+  "real_aircraft_validation": false
+}

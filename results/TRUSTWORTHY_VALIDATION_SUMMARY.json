@@ -1,0 +1,98 @@
+{
+  "disclaimer": "SYNTHETIC MISSION-LEVEL HOLDOUT EVALUATION ONLY. NOT VALIDATED ON REAL AIRCRAFT TELEMETRY.",
+  "audit_metadata": {
+    "train_mission_seeds": "100-399",
+    "validation_mission_seeds": "400-449",
+    "test_mission_seeds": "500-599",
+    "overlapping_window_leakage_eliminated": true
+  },
+  "clean_holdout_performance": {
+    "overall_accuracy": 0.9983885819521179,
+    "macro_precision": 0.9984864923528844,
+    "macro_recall": 0.9969069069069068,
+    "macro_f1": 0.9976903023326026,
+    "weighted_precision": 0.9983931827781882,
+    "weighted_recall": 0.9983885819521179,
+    "weighted_f1": 0.9983877029634118,
+    "per_class": {
+      "healthy": {
+        "precision": 0.9982756035387614,
+        "recall": 0.9996246246246246,
+        "f1": 0.9989496586390577,
+        "support": 13320
+      },
+      "cooling": {
+        "precision": 1.0,
+        "recall": 0.9904761904761905,
+        "f1": 0.9952153110047847,
+        "support": 1260
+      },
+      "oil_pressure": {
+        "precision": 0.9984139571768438,
+        "recall": 0.9992063492063492,
+        "f1": 0.9988099960333201,
+        "support": 1260
+      },
+      "misfire": {
+        "precision": 0.9988109393579072,
+        "recall": 1.0,
+        "f1": 0.9994051160023795,
+        "support": 840
+      },
+      "fuel_system": {
+        "precision": 1.0,
+        "recall": 0.9952380952380953,
+        "f1": 0.9976133651551313,
+        "support": 840
+      },
+      "sensor_drift": {
+        "precision": 1.0,
+        "recall": 0.9964285714285714,
+        "f1": 0.998211091234347,
+        "support": 840
+      },
+      "overheat": {
+        "precision": 0.9905548996458088,
+        "recall": 0.9988095238095238,
+        "f1": 0.9946650859513929,
+        "support": 840
+      },
+      "injector_fault": {
+        "precision": 1.0,
+        "recall": 0.9928571428571429,
+        "f1": 0.996415770609319,
+        "support": 840
+      },
+      "combustion_instability": {
+        "precision": 1.0,
+        "recall": 0.9976190476190476,
+        "f1": 0.99880810488677,
+        "support": 840
+      },
+      "alternator_failure": {
+        "precision": 0.9988095238095238,
+        "recall": 0.9988095238095238,
+        "f1": 0.9988095238095238,
+        "support": 840
+      }
+    }
+  },
+  "critical_metrics": {
+    "initial_step7_accuracy_pct": 100.0,
+    "clean_mission_holdout_accuracy_pct": 99.83885819521178,
+    "clean_macro_f1": 0.9976903023326026,
+    "clean_healthy_false_alarm_rate_per_hr": 0.0,
+    "clean_fault_detection_rate_pct": 100.0,
+    "clean_rul_mae_min": 0.9117517301500284,
+    "clean_rul_rmse_min": 1.748971796762214,
+    "clean_rul_relative_error_pct": 11.643978546679769,
+    "clean_rul_90_ci_coverage_pct": 0.0,
+    "can_classification_agreement_pct": 100.0,
+    "can_transport_latency_s": 0.1,
+    "ai_algorithmic_detection_latency_s": 136.55666666666667,
+    "total_diagnostic_latency_s": 136.66666666666666,
+    "model_mismatch_tolerance_pct": "\u00b115% (0 false alarms/hr under clean independent mission testing)",
+    "three_x_noise_accuracy_pct": 0.0,
+    "data_leakage_status": "ELIMINATED VIA MISSION-LEVEL HOLDOUT SEPARATION"
+  }
+}

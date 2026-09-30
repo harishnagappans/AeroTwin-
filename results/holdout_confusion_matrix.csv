@@ -1,0 +1,11 @@
+,healthy,cooling,oil_pressure,misfire,fuel_system,sensor_drift,overheat,injector_fault,combustion_instability,alternator_failure
+healthy,13315,0,2,1,0,0,1,0,0,1
+cooling,5,1248,0,0,0,0,7,0,0,0
+oil_pressure,1,0,1259,0,0,0,0,0,0,0
+misfire,0,0,0,840,0,0,0,0,0,0
+fuel_system,4,0,0,0,836,0,0,0,0,0
+sensor_drift,3,0,0,0,0,837,0,0,0,0
+overheat,1,0,0,0,0,0,839,0,0,0
+injector_fault,6,0,0,0,0,0,0,834,0,0
+combustion_instability,2,0,0,0,0,0,0,0,838,0
+alternator_failure,1,0,0,0,0,0,0,0,0,839

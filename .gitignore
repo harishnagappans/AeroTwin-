@@ -1,0 +1,24 @@
+# Python virtual environments & bytecode
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary scratch & OS files
+scratch/
+.DS_Store
+Thumbs.db
+
+# Test & Coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
